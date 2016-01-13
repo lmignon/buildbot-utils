@@ -1,2 +1,0 @@
-# buildbot-utils
-buildbot-util
