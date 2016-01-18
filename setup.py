@@ -33,8 +33,8 @@ setuptools.setup(
     ],
     entry_points={
         'console_scripts': [
-            "buildout_server="
-            "buildbot_utils.buildout_server:main",
+            "test_odoo_server="
+            "buildbot_utils.test_odoo_server:main",
         ],
     },
 )

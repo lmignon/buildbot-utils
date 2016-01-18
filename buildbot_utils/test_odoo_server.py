@@ -28,13 +28,13 @@ def has_test_errors(fname, dbname, check_loaded=True):
     errors_ignore = [
         'Mail delivery failed',
         'failed sending mail',
-        ]
+    ]
     errors_report = [
         lambda x: x['loglevel'] == 'CRITICAL',
         'At least one test failed',
         'no access rules, consider adding one',
         'invalid module names, ignored',
-        ]
+    ]
 
     def make_pattern_list_callable(pattern_list):
         for i in range(len(pattern_list)):
@@ -48,7 +48,7 @@ def has_test_errors(fname, dbname, check_loaded=True):
     make_pattern_list_callable(errors_ignore)
     make_pattern_list_callable(errors_report)
 
-    print("-"*10)
+    print("-" * 10)
     # Read log file removing ASCII color escapes:
     # http://serverfault.com/questions/71285
     color_regex = re.compile(r'\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[m|K]')
@@ -89,7 +89,7 @@ def has_test_errors(fname, dbname, check_loaded=True):
     if errors:
         for e in errors:
             print(e['message'])
-        print("-"*10)
+        print("-" * 10)
     return len(errors)
 
 
@@ -150,17 +150,31 @@ def get_addons(path):
 
 
 def get_addons_path(cfg_file):
-    config = ConfigParser.ConfigParser()
-    config.readfp(open(cfg_file))
-    return config.get('options', 'addons_path')
+    if os.path.exists(cfg_file):
+        config = ConfigParser.ConfigParser()
+        config.readfp(open(cfg_file))
+        return config.get('options', 'addons_path')
+    try:
+        import openerp
+        openerp.modules.module.initialize_sys_path()
+        ad_paths = openerp.modules.module.ad_paths
+        for ad in __import__('odoo_addons').__path__:
+            ad = os.path.abspath(ad)
+            if ad not in ad_paths:
+                ad_paths.append(ad)
+        print (ad_paths)
+        return ",".join(ad_paths)
+    except ImportError:
+        # odoo_addons is not provided by any distribution
+        pass
 
 
 def get_addons_to_check(src_dirs, odoo_include, odoo_exclude):
     """
     Get the list of modules that need to be installed
     :param src_dirs: list of src_dir directory
-    :param odoo_include: addons to include 
-    :param odoo_exclude: addons to exclude 
+    :param odoo_include: addons to include
+    :param odoo_exclude: addons to exclude
     :return: List of addons to test
     """
     addons_list = []
@@ -207,7 +221,7 @@ def setup_server(db, server_cmd, preinstall_modules, install_options=None):
     if the database template exists then will be used.
     :param db: Template database name
     :param server_cmd: Server command
-    :param preinstall_modules: list of modules to preinstall 
+    :param preinstall_modules: list of modules to preinstall
     :param install_options: Install options (travis parameter)
     """
     if preinstall_modules is None:
@@ -219,19 +233,25 @@ def setup_server(db, server_cmd, preinstall_modules, install_options=None):
         print("Using previous openerp_template database.")
     else:
         try:
-          cmd_odoo = ["%s" % server_cmd,
-                      "-d", db,
-                      "--log-level=warn",
-                      "--stop-after-init",
-                      "--init", ','.join(preinstall_modules),
-                      ] + (install_options or [])
-          print(" ".join(cmd_odoo))
-          subprocess.check_call(cmd_odoo)
-        except:
-          return 1
+            cmd_odoo = ["%s" % server_cmd,
+                        "-d", db,
+                        "--log-level=info",
+                        "--stop-after-init",
+                        "--init", ','.join(preinstall_modules),
+                        ] + (install_options or [])
+            print(" ".join(cmd_odoo))
+            command_call = ['unbuffer'] + cmd_odoo
+            p = subprocess.Popen(command_call,
+                                 stderr=subprocess.STDOUT,
+                                 stdout=subprocess.PIPE)
+            for line in iter(p.stdout.readline, ""):
+                print(line.replace('\n', ''))
+            p.stdout.close()
+            return_code = p.wait()
+            return return_code
+        except Exception as e:
+            return 1
     return 0
-
-
 
 
 RED = "\033[1;31m"
@@ -256,7 +276,7 @@ fail_msg = red("FAIL")
 success_msg = green("Success")
 
 
-def test_server(db, server_cmd, tested_addons, expected_errors=0): 
+def test_server(db, server_cmd, tested_addons, expected_errors=0):
     """
     Setup the base module before running the tests
     if the database template exists then will be used.
@@ -281,9 +301,10 @@ def test_server(db, server_cmd, tested_addons, expected_errors=0):
                             stderr=subprocess.STDOUT,
                             stdout=subprocess.PIPE)
     with open('stdout.log', 'w') as stdout:
-        for line in pipe.stdout:
+        for line in iter(pipe.stdout.readline, ""):
             stdout.write(line)
             print(line.strip())
+    pipe.stdout.close()
     returncode = pipe.wait()
     # Find errors, except from failed mails
     errors = has_test_errors(
@@ -327,14 +348,23 @@ def get_parser():
         default=False,
         help='Run tests'
     )
-    
+
+    main_parser.add_argument(
+        '-v', '--version',
+        dest='version',
+        action="store",
+        default="8.0",
+        choices=["8.0", "9.0"],
+        help='Specify odoo version'
+    )
+
     main_parser.add_argument(
         '-i', '--init',
         dest='do_run_tests',
         action="store_false",
         help='Init server'
     )
-    
+
     main_parser.add_argument(
         '-s', '--src_dir',
         dest='src_dirs',
@@ -353,17 +383,18 @@ def get_parser():
     main_parser.add_argument(
         '-cmd', '--server-cmd',
         dest='server_cmd',
-        action='store', default='./bin/start_odoo',
-        help='Odoo server command'
+        action='store', default=None,
+        help='Odoo server command (by default ./bin/start_odoo (8.0) '
+             'or odoo-autodiscover (9.0))'
     )
-    
+
     main_parser.add_argument(
         '-c', '--cfg',
         dest='cfg_file',
         action='store', default='./etc/odoo.cfg',
         help='Odoo server config'
     )
-    
+
     main_parser.add_argument(
         '-e', '--expected-errors',
         type=int,
@@ -371,14 +402,14 @@ def get_parser():
         action='store', default=0,
         help='Odoo server config'
     )
-    
+
     main_parser.add_argument(
         '--exclude',
         dest='exclude',
         action='store', default='',
         help='Comma separated list of addons to exclude from tests'
     )
-    
+
     main_parser.add_argument(
         '--include',
         dest='include',
@@ -388,20 +419,27 @@ def get_parser():
     )
     return main_parser
 
+
 def main():
     """Main CLI application."""
 
     parser = get_parser()
     args = parser.parse_args()
     tested_addons_list = get_addons_to_check(
-       args.src_dirs, args.include, args.exclude)
+        args.src_dirs, args.include, args.exclude)
     addons_path = get_addons_path(args.cfg_file)
     preinstall_modules = get_test_dependencies(addons_path, tested_addons_list)
+    server_cmd = args.server_cmd
+    if not server_cmd:
+        if args.version == '8.0':
+            server_cmd = './bin/start_odoo'
+        else:
+            server_cmd = 'odoo-autodiscover.py'
     if not args.do_run_tests:
-        return setup_server(args.db, args.server_cmd, preinstall_modules) 
+        return setup_server(args.db, server_cmd, preinstall_modules)
     else:
-        return test_server(args.db, args.server_cmd, tested_addons_list,
-                           args.expected_errors) 
+        return test_server(args.db, server_cmd, tested_addons_list,
+                           args.expected_errors)
 
 if __name__ == '__main__':
     exit(main())
