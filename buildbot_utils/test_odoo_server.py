@@ -11,6 +11,18 @@ import ConfigParser
 MANIFEST_FILES = ['__odoo__.py', '__openerp__.py', '__terp__.py']
 
 
+def get_open_port():
+    """Get the next free TCP port
+    """  
+    import socket
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.bind(("",0))
+    s.listen(1)
+    port = s.getsockname()[1]
+    s.close()
+    return port
+
+
 def has_test_errors(fname, dbname, check_loaded=True):
     """
     Check a list of log lines for test errors.
@@ -235,6 +247,7 @@ def setup_server(db, server_cmd, preinstall_modules, install_options=None):
         try:
             cmd_odoo = ["%s" % server_cmd,
                         "-d", db,
+                        "--xmlrpc-port=%d" % get_open_port(),
                         "--log-level=info",
                         "--stop-after-init",
                         "--init", ','.join(preinstall_modules),
@@ -296,6 +309,8 @@ def test_server(db, server_cmd, tested_addons, expected_errors, odoo_version):
     cmd_odoo = ["%s" % server_cmd,
                 "-d", db,
                 "--log-level=%s" % test_loglevel,
+                "--xmlrpc-port=" + get_open_port(),
+                "--log-level=info",
                 "--stop-after-init",
                 "--init", ','.join(tested_addons),
                 "--test-enable",
