@@ -276,7 +276,7 @@ fail_msg = red("FAIL")
 success_msg = green("Success")
 
 
-def test_server(db, server_cmd, tested_addons, expected_errors=0):
+def test_server(db, server_cmd, tested_addons, expected_errors, odoo_version):
     """
     Setup the base module before running the tests
     if the database template exists then will be used.
@@ -287,14 +287,21 @@ def test_server(db, server_cmd, tested_addons, expected_errors=0):
     all_errors = []
     counted_errors = 0
     print("\nTesting %s:" % tested_addons)
+    test_loghandler = None
+    if odoo_version == '7.0':
+        test_loglevel = 'test'
+    else:
+        test_loglevel = 'info'
+        test_loghandler = 'openerp.tools.yaml_import:DEBUG'
     cmd_odoo = ["%s" % server_cmd,
                 "-d", db,
-                "--log-level=info",
+                "--log-level=%s" % test_loglevel,
                 "--stop-after-init",
                 "--init", ','.join(tested_addons),
                 "--test-enable",
-                "--log-handler", "openerp.tools.yaml_import:DEBUG",
                 ]
+    if test_loghandler:
+        cmd_odoo +=  ['--log-handler', test_loghandler]
     print(" ".join(cmd_odoo))
     command_call = ['unbuffer'] + cmd_odoo
     pipe = subprocess.Popen(command_call,
@@ -304,7 +311,6 @@ def test_server(db, server_cmd, tested_addons, expected_errors=0):
         for line in iter(pipe.stdout.readline, ""):
             stdout.write(line)
             print(line.strip())
-    pipe.stdout.close()
     returncode = pipe.wait()
     # Find errors, except from failed mails
     errors = has_test_errors(
@@ -354,7 +360,7 @@ def get_parser():
         dest='version',
         action="store",
         default="8.0",
-        choices=["8.0", "9.0"],
+        choices=["7.0", "8.0", "9.0"],
         help='Specify odoo version'
     )
 
@@ -384,7 +390,7 @@ def get_parser():
         '-cmd', '--server-cmd',
         dest='server_cmd',
         action='store', default=None,
-        help='Odoo server command (by default ./bin/start_odoo (8.0) '
+        help='Odoo server command (by default ./bin/start_odoo (7.0, 8.0) '
              'or odoo-autodiscover (9.0))'
     )
 
@@ -431,7 +437,7 @@ def main():
     preinstall_modules = get_test_dependencies(addons_path, tested_addons_list)
     server_cmd = args.server_cmd
     if not server_cmd:
-        if args.version == '8.0':
+        if args.version in ['7.0', '8.0']:
             server_cmd = './bin/start_odoo'
         else:
             server_cmd = 'odoo-autodiscover.py'
@@ -439,7 +445,7 @@ def main():
         return setup_server(args.db, server_cmd, preinstall_modules)
     else:
         return test_server(args.db, server_cmd, tested_addons_list,
-                           args.expected_errors)
+                           args.expected_errors, args.version)
 
 if __name__ == '__main__':
     exit(main())
