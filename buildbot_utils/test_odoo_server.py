@@ -447,7 +447,9 @@ def main():
     parser = get_parser()
     args = parser.parse_args()
     tested_addons_list = get_addons_to_check(
-        args.src_dirs, args.include, args.exclude)
+        args.src_dirs,
+        filter(None, args.include.split(',')),
+        filter(None, args.exclude.split(',')))
     addons_path = get_addons_path(args.cfg_file)
     preinstall_modules = get_test_dependencies(addons_path, tested_addons_list)
     server_cmd = args.server_cmd
