@@ -309,7 +309,7 @@ def test_server(db, server_cmd, tested_addons, expected_errors, odoo_version):
     cmd_odoo = ["%s" % server_cmd,
                 "-d", db,
                 "--log-level=%s" % test_loglevel,
-                "--xmlrpc-port=" + get_open_port(),
+                "--xmlrpc-port=%d" % get_open_port(),
                 "--log-level=info",
                 "--stop-after-init",
                 "--init", ','.join(tested_addons),
