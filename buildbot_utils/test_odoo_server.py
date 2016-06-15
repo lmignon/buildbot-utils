@@ -162,10 +162,12 @@ def get_addons(path):
 
 
 def get_addons_path(cfg_file):
-    if os.path.exists(cfg_file):
+    if os.path.exists(cfg_file or './etc/odoo.cfg'):
         config = ConfigParser.ConfigParser()
         config.readfp(open(cfg_file))
-        return config.get('options', 'addons_path')
+        path = config.get('options', 'addons_path')
+        if path:
+            return path
     try:
         import openerp
         openerp.modules.module.initialize_sys_path()
@@ -227,14 +229,14 @@ def get_test_dependencies(addons_path, addons_list):
                 - set(addons_list))
 
 
-def setup_server(db, server_cmd, preinstall_modules, install_options=None):
+def setup_server(db, server_cmd, preinstall_modules, cfg_file, odoo_version):
     """
     Setup the base module before running the tests
     if the database template exists then will be used.
     :param db: Template database name
     :param server_cmd: Server command
     :param preinstall_modules: list of modules to preinstall
-    :param install_options: Install options (travis parameter)
+    :param cfg_file: Odoo config file
     """
     if preinstall_modules is None:
         preinstall_modules = ['base']
@@ -251,7 +253,9 @@ def setup_server(db, server_cmd, preinstall_modules, install_options=None):
                         "--log-level=info",
                         "--stop-after-init",
                         "--init", ','.join(preinstall_modules),
-                        ] + (install_options or [])
+                        ]
+            if cfg_file:
+                cmd_odoo.extend(['-c', cfg_file])
             print(" ".join(cmd_odoo))
             command_call = ['unbuffer'] + cmd_odoo
             p = subprocess.Popen(command_call,
@@ -289,7 +293,8 @@ fail_msg = red("FAIL")
 success_msg = green("Success")
 
 
-def test_server(db, server_cmd, tested_addons, expected_errors, odoo_version):
+def test_server(db, server_cmd, tested_addons, cfg_file, odoo_version,
+                expected_errors):
     """
     Setup the base module before running the tests
     if the database template exists then will be used.
@@ -314,6 +319,8 @@ def test_server(db, server_cmd, tested_addons, expected_errors, odoo_version):
                 "--init", ','.join(tested_addons),
                 "--test-enable",
                 ]
+    if cfg_file:
+                cmd_odoo.extend(['-c', cfg_file])
     if test_loghandler:
         cmd_odoo +=  ['--log-handler', test_loghandler]
     print(" ".join(cmd_odoo))
@@ -411,7 +418,7 @@ def get_parser():
     main_parser.add_argument(
         '-c', '--cfg',
         dest='cfg_file',
-        action='store', default='./etc/odoo.cfg',
+        action='store', default='',
         help='Odoo server config'
     )
 
@@ -458,10 +465,13 @@ def main():
         else:
             server_cmd = 'odoo-autodiscover.py'
     if not args.do_run_tests:
-        return setup_server(args.db, server_cmd, preinstall_modules)
+        return setup_server(
+            args.db, server_cmd, preinstall_modules, args.cfg_file,
+            args.version)
     else:
-        return test_server(args.db, server_cmd, tested_addons_list,
-                           args.expected_errors, args.version)
+        return test_server(
+            args.db, server_cmd, tested_addons_list, args.cfg_file,
+            args.version, args.expected_errors)
 
 if __name__ == '__main__':
     exit(main())
