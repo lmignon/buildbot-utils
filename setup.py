@@ -31,6 +31,7 @@ setuptools.setup(
     ],
     install_requires=[
     ],
+    test_suite='tests',
     entry_points={
         'console_scripts': [
             "test_odoo_server="

@@ -1,0 +1,12 @@
+2016-06-17 10:50:57,469 442 INFO ? openerp: database: default@default:default
+2016-06-17 10:50:57,564 442 INFO ? openerp.service.server: HTTP service (werkzeug) running on 0.0.0.0:8069
+2016-06-17 10:51:03,359 442 WARNING db-test openerp.modules.loading: The model xxx.xxx.electric.meter.type has no access rules, consider adding one. E.g. access_xxx_xxx_electric_meter_type,access_xxx_xxx_electric_meter_type,model_xxx_xxx_electric_meter_type,,1,0,0,0
+2016-06-17 10:51:03,359 442 WARNING db-test openerp.modules.loading: The model xxx.xxx.type has no access rules, consider adding one. E.g. access_xxx_xxx_type,access_xxx_xxx_type,model_xxx_xxx_type,,1,0,0,0
+2016-06-17 10:51:03,360 442 WARNING db-test openerp.modules.loading: The model xxx.xxx.xxx.xxx.category has no access rules, consider adding one. E.g. access_xxx_xxx_xxx_xxx_category,access_xxx_xxx_xxx_xxx_category,model_xxx_xxx_xxx_xxx_category,,1,0,0,0
+2016-06-17 10:51:03,360 442 WARNING db-test openerp.modules.loading: The model xxx.xxx.hearing.request.type has no access rules, consider adding one. E.g. access_xxx_xxx_hearing_request_type,access_xxx_xxx_hearing_request_type,model_xxx_xxx_hearing_request_type,,1,0,0,0
+2016-06-17 10:51:03,360 442 WARNING db-test openerp.modules.loading: The model xxx.xxx.origin has no access rules, consider adding one. E.g. access_xxx_xxx_origin,access_xxx_xxx_origin,model_xxx_xxx_origin,,1,0,0,0
+2016-06-17 10:51:03,360 442 WARNING db-test openerp.modules.loading: The model xxx.xxx.category has no access rules, consider adding one. E.g. access_xxx_xxx_category,access_xxx_xxx_category,model_xxx_xxx_category,,1,0,0,0
+2016-06-17 10:51:03,362 442 WARNING db-test openerp.modules.loading: Model member.revenue is declared but cannot be loaded! (Perhaps a module was partially removed or renamed)
+2016-06-17 10:51:03,475 442 WARNING db-test openerp.modules.loading: Model xxx.xxx.hearing.request is declared but cannot be loaded! (Perhaps a module was partially removed or renamed)
+2016-06-17 10:51:03,565 442 INFO db-test openerp.modules.loading: Modules loaded.
+2016-06-17 10:51:03,573 442 INFO db-test openerp.addons.base.ir.ir_http: Generating routing map
