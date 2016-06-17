@@ -1,9 +1,11 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
+# Copyright 2016 ACSONE SA/NV (<http://acsone.eu>)
+# License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl.html).
 from __future__ import print_function
 import ast
 import os
 import re
-import sys
 import subprocess
 import argparse
 import ConfigParser
@@ -13,10 +15,10 @@ MANIFEST_FILES = ['__odoo__.py', '__openerp__.py', '__terp__.py']
 
 def get_open_port():
     """Get the next free TCP port
-    """  
+    """
     import socket
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.bind(("",0))
+    s.bind(("", 0))
     s.listen(1)
     port = s.getsockname()[1]
     s.close()
@@ -224,9 +226,9 @@ def get_test_dependencies(addons_path, addons_list):
                 continue
             manif = eval(open(manif_path).read())
             return list(
-                set(manif.get('depends', []))
-                | set(get_test_dependencies(addons_path, addons_list[1:]))
-                - set(addons_list))
+                set(manif.get('depends', [])) |
+                set(get_test_dependencies(addons_path, addons_list[1:])) -
+                set(addons_list))
 
 
 def setup_server(db, server_cmd, preinstall_modules, cfg_file, odoo_version):
@@ -266,7 +268,7 @@ def setup_server(db, server_cmd, preinstall_modules, cfg_file, odoo_version):
             p.stdout.close()
             return_code = p.wait()
             return return_code
-        except Exception as e:
+        except Exception:
             return 1
     return 0
 
@@ -322,7 +324,7 @@ def test_server(db, server_cmd, tested_addons, cfg_file, odoo_version,
     if cfg_file:
                 cmd_odoo.extend(['-c', cfg_file])
     if test_loghandler:
-        cmd_odoo +=  ['--log-handler', test_loghandler]
+        cmd_odoo += ['--log-handler', test_loghandler]
     print(" ".join(cmd_odoo))
     command_call = ['unbuffer'] + cmd_odoo
     pipe = subprocess.Popen(command_call,
