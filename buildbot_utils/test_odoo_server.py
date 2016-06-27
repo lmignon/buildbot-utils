@@ -166,7 +166,8 @@ def get_addons(path):
 
 
 def get_addons_path(cfg_file):
-    if os.path.exists(cfg_file or './etc/odoo.cfg'):
+    cfg_file = cfg_file or './etc/odoo.cfg'
+    if os.path.exists(cfg_file):
         config = ConfigParser.ConfigParser()
         config.readfp(open(cfg_file))
         path = config.get('options', 'addons_path')
