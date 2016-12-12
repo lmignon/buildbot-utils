@@ -222,16 +222,18 @@ def get_test_dependencies(addons_path, addons_list):
     if not addons_list:
         return ['base']
     else:
-        for path in addons_path.split(','):
-            manif_path = is_installable_module(
-                os.path.join(path, addons_list[0]))
-            if not manif_path:
-                continue
-            manif = eval(open(manif_path).read())
-            return list(
-                set(manif.get('depends', [])) |
-                set(get_test_dependencies(addons_path, addons_list[1:])) -
-                set(addons_list))
+        while addons_list:
+            for path in addons_path.split(','):
+                manif_path = is_installable_module(
+                    os.path.join(path, addons_list[0]))
+                if not manif_path:
+                    continue
+                manif = eval(open(manif_path).read())
+                return list(
+                    set(manif.get('depends', [])) |
+                    set(get_test_dependencies(addons_path, addons_list[1:])) -
+                    set(addons_list))
+            addons_list = addons_list[1:]
 
 
 def setup_server(db, server_cmd, preinstall_modules, cfg_file, odoo_version):
@@ -452,6 +454,27 @@ def get_parser():
     return main_parser
 
 
+def get_external_dependencies(addons_path, tested_addons_list, src_modules):
+    """
+    Get all external dependencies taking car of ignoring modules in
+    src_module but not their dependencies
+    :param addons_path:
+    :param tested_addons_list:
+    :param src_modules:
+    :return:
+    """
+    preinstall_modules = get_test_dependencies(addons_path, tested_addons_list)
+    dependent_src_modules = set(preinstall_modules) & set(src_modules)
+    preinstall_modules = set(preinstall_modules) - set(src_modules)
+    if dependent_src_modules:
+        preinstall_modules = (
+            preinstall_modules |
+            get_external_dependencies(addons_path,
+                                      list(dependent_src_modules),
+                                      src_modules))
+    return preinstall_modules
+
+
 def main():
     """Main CLI application."""
 
@@ -462,7 +485,11 @@ def main():
         filter(None, args.include.split(',')),
         filter(None, args.exclude.split(',')))
     addons_path = get_addons_path(args.cfg_file)
-    preinstall_modules = get_test_dependencies(addons_path, tested_addons_list)
+    src_modules = []
+    for dir in args.src_dirs:
+        src_modules.extend(get_modules(dir))
+    preinstall_modules = get_external_dependencies(
+        addons_path, tested_addons_list, src_modules)
     server_cmd = args.server_cmd
     if not server_cmd:
         if args.version in ['7.0', '8.0']:
