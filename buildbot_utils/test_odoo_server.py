@@ -10,7 +10,8 @@ import subprocess
 import argparse
 import ConfigParser
 
-MANIFEST_FILES = ['__odoo__.py', '__openerp__.py', '__terp__.py']
+MANIFEST_FILES = ['__odoo__.py', '__openerp__.py', '__terp__.py',
+                  '__manifest__.py']
 
 
 def get_open_port():
@@ -137,10 +138,6 @@ def is_installable_module(path):
 
 def get_modules(path):
 
-    # Avoid empty basename when path ends with slash
-    if not os.path.basename(path):
-        path = os.path.dirname(path)
-
     res = []
     if os.path.isdir(path):
         res = [x for x in os.listdir(path)
@@ -165,7 +162,7 @@ def get_addons(path):
     return res
 
 
-def get_addons_path(cfg_file):
+def get_addons_path(cfg_file, version):
     cfg_file = cfg_file or './etc/odoo.cfg'
     if os.path.exists(cfg_file):
         config = ConfigParser.ConfigParser()
@@ -173,19 +170,34 @@ def get_addons_path(cfg_file):
         path = config.get('options', 'addons_path')
         if path:
             return path
-    try:
-        import openerp
-        openerp.modules.module.initialize_sys_path()
-        ad_paths = openerp.modules.module.ad_paths
-        for ad in __import__('odoo_addons').__path__:
-            ad = os.path.abspath(ad)
-            if ad not in ad_paths:
-                ad_paths.append(ad)
-        print (ad_paths)
-        return ",".join(ad_paths)
-    except ImportError:
-        # odoo_addons is not provided by any distribution
-        pass
+    if version == '9.0':
+        try:
+            import openerp
+            openerp.modules.module.initialize_sys_path()
+            ad_paths = openerp.modules.module.ad_paths
+            for ad in __import__('odoo_addons').__path__:
+                ad = os.path.abspath(ad)
+                if ad not in ad_paths:
+                    ad_paths.append(ad)
+            print (ad_paths)
+            return ",".join(ad_paths)
+        except ImportError:
+            # odoo_addons is not provided by any distribution
+            pass
+    elif version == '10.0':
+        try:
+            import odoo
+            odoo.modules.module.initialize_sys_path()
+            ad_paths = odoo.modules.module.ad_paths
+            for ad in __import__('odoo').__path__:
+                ad = os.path.abspath(ad)
+                if ad not in ad_paths:
+                    ad_paths.append(ad)
+            print (ad_paths)
+            return ",".join(ad_paths)
+        except ImportError as e:
+            # odoo is not provided by any distribution
+            pass
 
 
 def get_addons_to_check(src_dirs, odoo_include, odoo_exclude):
@@ -386,7 +398,7 @@ def get_parser():
         dest='version',
         action="store",
         default="8.0",
-        choices=["7.0", "8.0", "9.0"],
+        choices=["7.0", "8.0", "9.0", "10.0"],
         help='Specify odoo version'
     )
 
@@ -417,7 +429,7 @@ def get_parser():
         dest='server_cmd',
         action='store', default=None,
         help='Odoo server command (by default ./bin/start_odoo (7.0, 8.0) '
-             'or odoo-autodiscover (9.0))'
+             'or odoo-autodiscover (9.0) or odoo (>= 10.0))'
     )
 
     main_parser.add_argument(
@@ -461,14 +473,16 @@ def main():
         args.src_dirs,
         filter(None, args.include.split(',')),
         filter(None, args.exclude.split(',')))
-    addons_path = get_addons_path(args.cfg_file)
+    addons_path = get_addons_path(args.cfg_file, args.version)
     preinstall_modules = get_test_dependencies(addons_path, tested_addons_list)
     server_cmd = args.server_cmd
     if not server_cmd:
         if args.version in ['7.0', '8.0']:
             server_cmd = './bin/start_odoo'
-        else:
+        elif args.version == '9.0':
             server_cmd = 'odoo-autodiscover.py'
+        else:
+            server_cmd = 'odoo.py'
     if not args.do_run_tests:
         return setup_server(
             args.db, server_cmd, preinstall_modules, args.cfg_file,
